@@ -1,0 +1,10 @@
+
+[test]
+192.168.43.89 ansible_user=root ansible_ssh_pass=redhat
+
+[pl]
+192.168.43.117 ansible_user=root ansible_ssh_pass=redhat
+
+[gui]
+192.168.43.101 ansible_user=root ansible_ssh_pass=hitesh123
+

@@ -1,0 +1,84 @@
+- hosts: test
+  vars:
+    docker: "docker-ce-18.09.1-3.el7.x86_64"
+  tasks:
+    - name: making a docker conf file 
+      yum_repository:
+        name: "docker"
+        description: "docker yum repo"
+        baseurl: "https://download.docker.com/linux/centos/7/x86_64/stable/"
+        gpgcheck: no
+      register: x
+
+    - debug:
+        var: x.stdout
+
+        #your yum should already be conf with baseos and appstream in rhel package
+    - name: installing docker-ce
+      package:
+          name: docker-ce-18.09.1-3.el7.x86_64
+          state: present
+          skip_broken: yes
+      register: docker_installation
+      ignore_errors: yes
+
+    - debug:
+            var: docker_installation.stdout
+
+    - name: installing python
+      package:
+              name: python3
+              state: present
+
+    - service:
+            name: docker
+            state: started
+            enabled: yes
+
+    - name: disabling firewalld
+      service:
+              name: firewalld
+              state: stopped
+              enabled: False
+    
+    - pip:
+            name: docker
+            executable: pip3
+    
+    - name: copying /var/www/html to managed node
+      copy:
+             src: "/var/www/html/"
+             dest: "/var/www/html/"          
+
+    - docker_image:
+            name: vimal13/apache-webserver-php
+            source: pull
+    
+    - name: creating docker container with volume mount and port forwarding 
+      docker_container:
+            name: httpd_webserver
+            image: vimal13/apache-webserver-php
+            #auto_remove: yes
+            volumes:
+                    - /var/www/html/:/var/www/html/
+            expose:
+                    - "81"
+            ports:
+                    - "81:80"
+      register: d_cont_info
+
+    - debug:
+           msg: "httpd_webserver container info {{ d_cont_info }}"
+
+
+
+
+#commands i used for iptables
+#iptables -t nat -A DOCKER -p tcp -d 0/0 --dport 80 -j DNAT --to-destination 172.17.0.2:80
+#iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-ports 8443
+#sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+#same for OUTPUT of iptables 
+#restart docker services while firewalld is running so docker can create iptables for container isolation
+
